@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deck controller</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    socket.on('connect', () => {
+      console.log('Connected to WebSocket');
+    });
+
+    socket.on('audio_outputs', (data) => {
+      const outputList = document.getElementById('outputList');
+      outputList.innerHTML = '';
+      data.outputs.forEach(output => {
+        const option = document.createElement('option');
+        option.value = output;
+        option.textContent = output;
+        outputList.appendChild(option);
+      });
+    });
+
+    socket.on('current_track', (data) => {
+      document.getElementById('trackInfo').textContent = data.track_info;
+    });
+
+    socket.on('volume', (data) => {
+      document.getElementById('volumeDisplay').textContent = `Volume: ${data.volume}%`;
+      document.getElementById('volumeSlider').value = data.volume;
+    });
+
+    socket.on('audio_output_changed', (data) => {
+      if (data.success) {
+        alert(`Audio output changed to ${data.source}`);
+      } else {
+        alert('Failed to change audio output');
+      }
+    });
+
+    // Remplacer les fonctions existantes
+    function spotifyCommand(command) {
+      socket.emit('spotify_command', { command });
+    }
+
+    function setVolume() {
+      const newVolume = parseInt(document.getElementById('volumeSlider').value);
+      socket.emit('set_volume', { volume: newVolume });
+    }
+
+    function setAudioOutput() {
+      const outputName = document.getElementById('outputList').value;
+      socket.emit('set_audio_output', { source_name: outputName });
+    }
+  </script>
+</head>
+
+<body class="bg-gray-100 text-gray-900 font-sans" onload="initializePage()">
+  <div class="flex flex-col items-center p-6 space-y-6">
+    <!-- Audio Output Manager -->
+    <section class="w-full max-w-xl bg-white p-6 rounded-lg shadow-md">
+      <h1 class="text-xl font-bold mb-4 text-center">Audio Output Manager</h1>
+      <div class="flex flex-col space-y-4">
+        <button class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+          onclick="fetchAudioOutputs()">Fetch Audio Outputs</button>
+        <select id="outputList" class="w-full p-2 border border-gray-300 rounded-lg"></select>
+        <button class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600" onclick="setAudioOutput()">Set
+          Audio Output</button>
+      </div>
+    </section>
+
+    <!-- Spotify Controller -->
+    <section class="w-full max-w-xl bg-white p-6 rounded-lg shadow-md">
+      <h1 class="text-xl font-bold mb-4 text-center">Spotify Controller</h1>
+      <p id="trackInfo" class="text-center text-gray-600 mb-4">No track information available</p>
+      <div class="flex justify-between space-x-4">
+        <button class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600"
+          onclick="spotifyCommand('previous')">Previous</button>
+        <button class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
+          onclick="spotifyCommand('play_pause')">Play/Pause</button>
+        <button class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600"
+          onclick="spotifyCommand('next')">Next</button>
+      </div>
+      <button class="mt-4 bg-blue-500 text-white px-4 py-2 w-full rounded-lg hover:bg-blue-600"
+        onclick="fetchCurrentTrack()">Refresh Track Info</button>
+    </section>
+
+    <!-- Volume Control -->
+    <section class="w-full max-w-xl bg-white p-6 rounded-lg shadow-md">
+      <h1 class="text-xl font-bold mb-4 text-center">Volume Control</h1>
+      <p id="volumeDisplay" class="text-center text-gray-600 mb-4">Volume: --%</p>
+      <div class="flex flex-col space-y-4">
+        <input type="range" id="volumeSlider" min="0" max="100" step="1"
+          class="w-full h-2 bg-gray-300 rounded-lg appearance-none focus:outline-none" oninput="setVolume()" />
+        <button class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600" onclick="fetchVolume()">Refresh
+          Volume</button>
+      </div>
+    </section>
+  </div>
+</body>
+
+</html>
